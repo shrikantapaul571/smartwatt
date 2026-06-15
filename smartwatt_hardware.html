@@ -46,6 +46,7 @@
     <h2>A · Room Node — current-sensing front-end</h2>
     <svg viewBox="0 0 720 440">
       <!-- Wi-Fi label (clear top zone) -->
+      <defs><marker id="aB" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/></marker></defs>
       <text x="600" y="40" text-anchor="middle" class="pin" fill="#2563eb">Wi-Fi / MQTT → cloud</text>
 
       <!-- ESP32 -->
@@ -108,9 +109,8 @@
       <text x="495" y="421" text-anchor="middle" class="ts">admin-only · fail-safe ON · NOT in pilot</text>
       <path class="wire wR dash" d="M430 360 V385"/>
 
-      <!-- wifi arrow -->
-      <path class="wire wB" d="M560 150 L600 55"/>
-      <polygon points="600,52 588,60 597,66" fill="#2563eb"/>
+      <!-- wifi arrow (ESP32 top → cloud label) -->
+      <path d="M560 150 L600 56" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#aB)"/>
     </svg>
   </div>
 
@@ -118,6 +118,7 @@
   <div class="card">
     <h2>B · Per-floor Voltage Ref</h2>
     <svg viewBox="0 0 320 440">
+      <defs><marker id="aB2" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/></marker></defs>
       <text x="250" y="40" text-anchor="middle" class="pin" fill="#2563eb">→ MQTT</text>
 
       <rect x="150" y="120" width="130" height="130" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
@@ -133,8 +134,7 @@
       <path class="wire wG" d="M120 205 H150"/>
       <path class="wire" stroke="#334155" d="M120 232 H150"/>
 
-      <path class="wire wB" d="M250 120 L262 60"/>
-      <polygon points="262,57 252,64 260,69" fill="#2563eb"/>
+      <path d="M250 120 L262 58" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#aB2)"/>
 
       <text x="20" y="300" class="ts">1 per electrical phase / floor.</text>
       <text x="20" y="320" class="ts">Broadcasts voltage to room nodes</text>
