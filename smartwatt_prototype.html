@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SmartWatt — Prototype (Simulated)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  .live-dot{animation:pulse 1.4s infinite;}
+  @keyframes pulse{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+</style>
+</head>
+<body class="bg-slate-100">
+<div id="root"></div>
+
+<script type="text/babel">
+const {useState, useEffect, useRef, useMemo} = React;
+
+const FLOORS = 4, ROOMS = 10, RATE = 8.5; // BDT/kWh illustrative
+const THRESH_DEFAULT = 1.5;
+
+// ---------- simulated data engine ----------
+function rnd(a,b){return a + Math.random()*(b-a);}
+function makeRooms(){
+  const arr=[];
+  for(let f=0; f<FLOORS; f++) for(let r=0; r<ROOMS; r++){
+    arr.push({ id:`${f}-${r}`, floor:f, room:r,
+      base: rnd(0.15,0.55),         // idle baseline kW
+      kw: 0, kwh: 0, forced:false }); // forced = heater event
+  }
+  return arr;
+}
+// daily shape multiplier by simulated hour
+function dayMult(h){
+  if(h>=19 && h<=23) return 1.6;     // evening peak
+  if(h>=0 && h<6) return 0.6;        // overnight
+  return 1.0;
+}
+
+function App(){
+  const [view,setView] = useState("admin");
+  const [rooms,setRooms] = useState(makeRooms);
+  const [thresh,setThresh] = useState(THRESH_DEFAULT);
+  const [alerts,setAlerts] = useState([]);
+  const [selected,setSelected] = useState(null);
+  const [simHour,setSimHour] = useState(8);
+  const [studentRoom] = useState("1-6"); // the logged-in student's room
+  const [profiles,setProfiles] = useState({}); // id -> [{h,kw}]
+  const tick = useRef(0);
+  const threshRef = useRef(thresh); threshRef.current = thresh;
+
+  useEffect(()=>{
+    const iv = setInterval(()=>{
+      tick.current++;
+      const h = (8 + tick.current*0.25) % 24;   // advance ~15 sim-min per tick
+      setSimHour(h);
+      setRooms(prev=>{
+        const next = prev.map(rm=>{
+          let kw = rm.base * dayMult(h) + rnd(-0.05,0.08);
+          if(rm.forced) kw += 1.9;                // heater spike
+          kw = Math.max(0.02, kw);
+          return {...rm, kw, kwh: rm.kwh + kw*(0.25/60)*15 }; // crude kWh accrual
+        });
+        // randomly trigger a transient spike on a non-forced room
+        if(Math.random()<0.08){
+          const i = Math.floor(Math.random()*next.length);
+          if(!next[i].forced) next[i] = {...next[i], kw: next[i].kw + rnd(1.4,2.1)};
+        }
+        // alerts
+        next.forEach(rm=>{
+          if(rm.kw > threshRef.current){
+            setAlerts(a=>{
+              if(a[0] && a[0].id===rm.id && Date.now()-a[0].t < 6000) return a;
+              return [{id:rm.id, floor:rm.floor, room:rm.room, kw:rm.kw,
+                       t:Date.now(), ts:new Date().toLocaleTimeString()}, ...a].slice(0,30);
+            });
+          }
+        });
+        return next;
+      });
+      // record load profile for selected + student room
+      setProfiles(p=>{
+        const np={...p};
+        [selectedRef.current, studentRoom].forEach(id=>{
+          if(!id) return;
+          const rm = roomsRef.current.find(x=>x.id===id);
+          if(!rm) return;
+          np[id] = [...(np[id]||[]), {h, kw: rm.kw}].slice(-96);
+        });
+        return np;
+      });
+    }, 1500);
+    return ()=>clearInterval(iv);
+  },[]);
+
+  const roomsRef = useRef(rooms); roomsRef.current = rooms;
+  const selectedRef = useRef(selected); selectedRef.current = selected;
+
+  const totalKw = rooms.reduce((s,r)=>s+r.kw,0);
+  const totalKwh = rooms.reduce((s,r)=>s+r.kwh,0);
+  const activeAlerts = rooms.filter(r=>r.kw>thresh).length;
+
+  function forceHeater(){
+    // pick a random non-forced room
+    const cand = rooms.filter(r=>!r.forced);
+    if(!cand.length) return;
+    const pick = cand[Math.floor(Math.random()*cand.length)];
+    setRooms(prev=>prev.map(r=>r.id===pick.id?{...r,forced:true}:r));
+    setSelected(pick.id);
+    setTimeout(()=>setRooms(prev=>prev.map(r=>r.id===pick.id?{...r,forced:false}:r)),12000);
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <TopBar view={view} setView={setView}/>
+      <div className="bg-amber-50 border-b border-amber-200 text-amber-800 text-xs px-4 py-1.5 text-center">
+        ⚠ Demo with <b>SIMULATED data</b> — illustrates the software only, not measured energy savings or sensor accuracy.
+        Analytics = Z-score / threshold rule (not AI/ML). Alerts flag an abnormal load, <b>not which device</b>.
+      </div>
+      {view==="admin"
+        ? <Admin rooms={rooms} thresh={thresh} setThresh={setThresh} alerts={alerts}
+                 selected={selected} setSelected={setSelected} profiles={profiles}
+                 totalKw={totalKw} totalKwh={totalKwh} activeAlerts={activeAlerts}
+                 simHour={simHour} forceHeater={forceHeater}/>
+        : <Student rooms={rooms} studentRoom={studentRoom} profiles={profiles} thresh={thresh}/>}
+    </div>
+  );
+}
+
+function TopBar({view,setView}){
+  return (
+    <div className="bg-slate-900 text-white px-5 py-3 flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl">⚡</span>
+        <div><div className="font-bold leading-tight">SmartWatt</div>
+          <div className="text-[10px] text-slate-400 leading-tight">Room-wise energy monitoring</div></div>
+      </div>
+      <div className="ml-auto flex items-center gap-2 text-sm">
+        <span className="flex items-center gap-1 text-emerald-400 text-xs mr-3">
+          <span className="live-dot">●</span> LIVE (simulated)</span>
+        {["admin","student"].map(v=>(
+          <button key={v} onClick={()=>setView(v)}
+            className={"px-3 py-1.5 rounded-md font-medium "+
+              (view===v?"bg-blue-600 text-white":"bg-slate-700 text-slate-300 hover:bg-slate-600")}>
+            {v==="admin"?"Admin Dashboard":"Student App"}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------- admin ----------
+function kwColor(kw,thresh){
+  if(kw>thresh) return "#dc2626";
+  const t = Math.min(kw/thresh,1);
+  if(t<0.5) return "#16a34a";
+  if(t<0.8) return "#84cc16";
+  return "#facc15";
+}
+function Admin({rooms,thresh,setThresh,alerts,selected,setSelected,profiles,totalKw,totalKwh,activeAlerts,simHour,forceHeater}){
+  const floorTotals = Array.from({length:FLOORS},(_,f)=>
+    rooms.filter(r=>r.floor===f).reduce((s,r)=>s+r.kw,0));
+  const maxFloor = Math.max(...floorTotals,1);
+  const sel = rooms.find(r=>r.id===selected);
+  return (
+    <div className="flex-1 p-4 grid grid-cols-12 gap-4">
+      {/* KPIs */}
+      <div className="col-span-12 grid grid-cols-4 gap-4">
+        <Kpi label="Total live load" val={totalKw.toFixed(1)+" kW"} c="text-blue-600"/>
+        <Kpi label="Session energy" val={totalKwh.toFixed(2)+" kWh"} c="text-emerald-600"/>
+        <Kpi label="Active alerts" val={activeAlerts} c="text-red-600"/>
+        <Kpi label="Rooms online" val={`${rooms.length}/${rooms.length}`} c="text-slate-700"/>
+      </div>
+
+      {/* heatmap + controls */}
+      <div className="col-span-8 bg-white rounded-xl shadow p-4">
+        <div className="flex items-center mb-3">
+          <h2 className="font-semibold text-slate-700">Live room-wise heatmap (kW)</h2>
+          <span className="ml-3 text-xs text-slate-400">sim time {simHour.toFixed(2)}h</span>
+          <button onClick={forceHeater}
+            className="ml-auto text-xs bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-md hover:bg-red-100">
+            🔥 Simulate heater plugged in
+          </button>
+        </div>
+        <div className="space-y-1">
+          {Array.from({length:FLOORS},(_,f)=>(
+            <div key={f} className="flex items-center gap-1">
+              <span className="w-14 text-xs text-slate-500">Floor {f+1}</span>
+              {Array.from({length:ROOMS},(_,r)=>{
+                const rm = rooms.find(x=>x.floor===f && x.room===r);
+                return (
+                  <button key={r} onClick={()=>setSelected(rm.id)}
+                    title={`Room ${r+1}: ${rm.kw.toFixed(2)} kW • ${rm.kwh.toFixed(2)} kWh`}
+                    style={{background:kwColor(rm.kw,thresh)}}
+                    className={"flex-1 h-12 rounded text-[10px] text-white font-medium flex items-center justify-center "+
+                      (selected===rm.id?"ring-2 ring-slate-900":"")}>
+                    {rm.kw.toFixed(2)}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <div className="flex gap-1 pl-14">
+            {Array.from({length:ROOMS},(_,r)=>(
+              <span key={r} className="flex-1 text-center text-[10px] text-slate-400">R{r+1}</span>))}
+          </div>
+        </div>
+
+        {/* threshold slider */}
+        <div className="mt-4 flex items-center gap-3">
+          <span className="text-xs text-slate-500">Alert threshold</span>
+          <input type="range" min="0.8" max="2.5" step="0.1" value={thresh}
+            onChange={e=>setThresh(+e.target.value)} className="flex-1"/>
+          <span className="text-sm font-semibold text-slate-700 w-16">{thresh.toFixed(1)} kW</span>
+        </div>
+
+        {/* per-floor bars */}
+        <div className="mt-5">
+          <h3 className="text-sm font-semibold text-slate-600 mb-2">Total by floor (kW)</h3>
+          {floorTotals.map((v,f)=>(
+            <div key={f} className="flex items-center gap-2 mb-1.5">
+              <span className="w-14 text-xs text-slate-500">Floor {f+1}</span>
+              <div className="flex-1 bg-slate-100 rounded h-5">
+                <div className="h-5 rounded bg-blue-500 flex items-center justify-end pr-2 text-[10px] text-white"
+                     style={{width:`${(v/maxFloor)*100}%`}}>{v.toFixed(1)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* right column: detail + alerts */}
+      <div className="col-span-4 space-y-4">
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="font-semibold text-slate-700 mb-2">
+            {sel?`Floor ${sel.floor+1} · Room ${sel.room+1}`:"Select a room"}</h2>
+          {sel ? <>
+            <div className="flex gap-4 mb-2 text-sm">
+              <div><div className="text-slate-400 text-xs">Now</div>
+                <div className="font-bold" style={{color:kwColor(sel.kw,thresh)}}>{sel.kw.toFixed(2)} kW</div></div>
+              <div><div className="text-slate-400 text-xs">Session</div>
+                <div className="font-bold text-emerald-600">{sel.kwh.toFixed(2)} kWh</div></div>
+              <div><div className="text-slate-400 text-xs">Status</div>
+                <div className={"font-bold "+(sel.kw>thresh?"text-red-600":"text-emerald-600")}>
+                  {sel.kw>thresh?"OVER":"OK"}</div></div>
+            </div>
+            <LoadChart data={profiles[sel.id]||[]} thresh={thresh}/>
+          </> : <p className="text-sm text-slate-400">Click any cell in the heatmap.</p>}
+        </div>
+
+        <div className="bg-white rounded-xl shadow p-4">
+          <h2 className="font-semibold text-slate-700 mb-2">Alerts feed</h2>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {alerts.length===0 && <p className="text-sm text-slate-400">No alerts yet.</p>}
+            {alerts.map((a,i)=>(
+              <div key={i} className="bg-red-50 border border-red-200 rounded-md p-2 text-xs">
+                <div className="font-semibold text-red-700">⚠ Floor {a.floor+1} · Room {a.room+1} — {a.kw.toFixed(2)} kW</div>
+                <div className="text-red-600">exceeds {thresh.toFixed(1)} kW · high-wattage load detected</div>
+                <div className="text-red-400 italic">profile anomaly — device not identified</div>
+                <div className="text-slate-400 mt-0.5">{a.ts}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Kpi({label,val,c}){
+  return <div className="bg-white rounded-xl shadow p-4">
+    <div className="text-xs text-slate-400">{label}</div>
+    <div className={"text-2xl font-bold "+c}>{val}</div></div>;
+}
+
+// inline SVG load profile chart
+function LoadChart({data,thresh}){
+  const W=300,H=120,pad=24;
+  if(data.length<2) return <div className="h-[120px] flex items-center justify-center text-xs text-slate-400">collecting live data…</div>;
+  const maxKw = Math.max(thresh*1.3, ...data.map(d=>d.kw));
+  const x = i => pad + (i/(data.length-1))*(W-pad-6);
+  const y = kw => H-pad - (kw/maxKw)*(H-pad-6);
+  const path = data.map((d,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${y(d.kw).toFixed(1)}`).join(" ");
+  const ty = y(thresh);
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      <line x1={pad} y1={H-pad} x2={W-6} y2={H-pad} stroke="#e2e8f0"/>
+      <line x1={pad} y1={6} x2={pad} y2={H-pad} stroke="#e2e8f0"/>
+      <line x1={pad} y1={ty} x2={W-6} y2={ty} stroke="#dc2626" strokeDasharray="4 3"/>
+      <text x={W-6} y={ty-3} textAnchor="end" fontSize="8" fill="#dc2626">thresh {thresh.toFixed(1)}</text>
+      <path d={path} fill="none" stroke="#2563eb" strokeWidth="1.8"/>
+      <text x={pad} y={H-6} fontSize="8" fill="#94a3b8">load profile (live, kW)</text>
+    </svg>
+  );
+}
+
+// ---------- student app ----------
+function Student({rooms,studentRoom,profiles,thresh}){
+  const me = rooms.find(r=>r.id===studentRoom);
+  const hallAvg = rooms.reduce((s,r)=>s+r.kw,0)/rooms.length;     // anonymized average
+  const myKwh = me?me.kwh:0;
+  const cost = myKwh*RATE;
+  const vsAvg = me?((me.kw-hallAvg)/hallAvg*100):0;
+  const better = vsAvg<0;
+  const over = me && me.kw>thresh;
+  return (
+    <div className="flex-1 flex justify-center items-start p-6 bg-slate-100">
+      <div className="w-[360px] bg-white rounded-[2rem] shadow-2xl border-8 border-slate-900 overflow-hidden">
+        <div className="bg-slate-900 text-white text-center text-[10px] py-1">SmartWatt • My Room</div>
+        <div className="p-5 space-y-4">
+          {over && <div className="bg-red-600 text-white rounded-lg p-3 text-sm">
+            🔔 Your room is over the {thresh.toFixed(1)} kW limit. Please check high-wattage devices.</div>}
+          <div className="text-center">
+            <div className="text-xs text-slate-400">My room · Floor {me?me.floor+1:"-"} Room {me?me.room+1:"-"}</div>
+            <div className="text-5xl font-bold mt-1" style={{color:over?"#dc2626":"#2563eb"}}>
+              {me?me.kw.toFixed(2):"--"}</div>
+            <div className="text-slate-400 text-sm">kW right now</div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-emerald-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-slate-400">Energy</div>
+              <div className="text-lg font-bold text-emerald-600">{myKwh.toFixed(2)}</div>
+              <div className="text-[10px] text-slate-400">kWh this session</div></div>
+            <div className="bg-blue-50 rounded-lg p-3 text-center">
+              <div className="text-xs text-slate-400">Est. cost</div>
+              <div className="text-lg font-bold text-blue-600">৳{cost.toFixed(1)}</div>
+              <div className="text-[10px] text-slate-400">@ ৳{RATE}/kWh (illustrative)</div></div>
+          </div>
+          <div className="bg-slate-50 rounded-lg p-3">
+            <div className="text-xs text-slate-500 mb-1">vs hall average <span className="text-slate-300">(anonymized)</span></div>
+            <div className={"text-sm font-semibold "+(better?"text-emerald-600":"text-orange-600")}>
+              {better?"▼":"▲"} {Math.abs(vsAvg).toFixed(0)}% {better?"below":"above"} average</div>
+            <div className="text-[10px] text-slate-400 mt-1">You never see other students' room data — only the anonymized average.</div>
+          </div>
+          <div className="bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-lg p-3 flex items-center gap-3">
+            <span className="text-2xl">{better?"🌿":"⚡"}</span>
+            <div><div className="font-bold text-sm">{better?"Green Saver badge":"Keep an eye on usage"}</div>
+              <div className="text-[10px] opacity-90">Gamification = engagement experiment, not a guaranteed saver.</div></div>
+          </div>
+          <LoadChart data={profiles[studentRoom]||[]} thresh={thresh}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

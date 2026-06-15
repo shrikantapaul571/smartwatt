@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartWatt — System Architecture</title>
+<style>
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       background:#f1f5f9;color:#334155;padding:24px;}
+  h1{margin:0 0 4px;font-size:24px;}
+  .sub{color:#64748b;margin-bottom:16px;font-size:14px;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:18px;}
+  svg{width:100%;height:auto;display:block;}
+  .legend{margin-top:14px;font-size:12px;color:#64748b;display:flex;gap:18px;flex-wrap:wrap;}
+  .legend span{display:inline-flex;align-items:center;gap:6px;}
+  .sw{width:22px;height:0;border-top:3px solid;display:inline-block;}
+  /* svg text */
+  .band{font:700 12px ui-sans-serif;fill:#334155;letter-spacing:.5px;}
+  .bt{font:700 13px ui-sans-serif;fill:#fff;}      /* box title */
+  .bs{font:11px ui-sans-serif;fill:#e2e8f0;}        /* box subtitle */
+  .cap{font:11px ui-sans-serif;fill:#475569;}
+  .albl{font:italic 11px ui-sans-serif;}
+</style>
+</head>
+<body>
+<h1>⚡ SmartWatt — System Architecture</h1>
+<div class="sub">Room-wise IoT energy monitoring · end-to-end data flow (three layers)</div>
+
+<div class="card">
+<svg viewBox="0 0 1120 640">
+  <defs>
+    <marker id="arrS" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#334155"/></marker>
+    <marker id="arrG" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#16a34a"/></marker>
+    <marker id="arrB" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#2563eb"/></marker>
+    <marker id="arrO" markerWidth="10" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#ea580c"/></marker>
+  </defs>
+
+  <!-- ===== LAYER 1 · HARDWARE ===== -->
+  <rect x="20" y="20" width="1080" height="130" rx="10" fill="#dbeafe"/>
+  <text x="36" y="42" class="band">LAYER 1 · HARDWARE</text>
+  <!-- room node A -->
+  <rect x="60" y="58" width="210" height="74" rx="8" fill="#2563eb"/>
+  <text x="165" y="84" text-anchor="middle" class="bt">Room Node × N</text>
+  <text x="165" y="102" text-anchor="middle" class="bs">ESP32 + SCT-013</text>
+  <text x="165" y="118" text-anchor="middle" class="bs">(current)</text>
+  <!-- room node B -->
+  <rect x="300" y="58" width="180" height="74" rx="8" fill="#2563eb"/>
+  <text x="390" y="88" text-anchor="middle" class="bt">Room Node</text>
+  <text x="390" y="108" text-anchor="middle" class="bs">ESP32 + SCT-013</text>
+  <!-- voltage ref -->
+  <rect x="520" y="58" width="230" height="74" rx="8" fill="#1e40af"/>
+  <text x="635" y="84" text-anchor="middle" class="bt">Per-floor Voltage Ref</text>
+  <text x="635" y="104" text-anchor="middle" class="bs">1 × ZMPT101B / phase</text>
+  <!-- caption -->
+  <text x="790" y="86" class="cap">On-device kWh accumulation;</text>
+  <text x="790" y="104" class="cap">±2% target (after calibration).</text>
+  <text x="790" y="122" class="cap">SD-card buffer when Wi-Fi drops.</text>
+
+  <!-- ===== LAYER 2 · CLOUD ===== -->
+  <rect x="20" y="195" width="1080" height="150" rx="10" fill="#dcfce7"/>
+  <text x="36" y="217" class="band">LAYER 2 · CLOUD</text>
+  <!-- chain boxes y=238 h=92 -->
+  <g>
+    <rect x="45" y="240" width="185" height="92" rx="8" fill="#16a34a"/>
+    <text x="137" y="278" text-anchor="middle" class="bt">MQTT Broker</text>
+    <text x="137" y="298" text-anchor="middle" class="bs">HiveMQ /</text>
+    <text x="137" y="314" text-anchor="middle" class="bs">Mosquitto</text>
+
+    <rect x="255" y="240" width="185" height="92" rx="8" fill="#16a34a"/>
+    <text x="347" y="278" text-anchor="middle" class="bt">Backend</text>
+    <text x="347" y="298" text-anchor="middle" class="bs">FastAPI /</text>
+    <text x="347" y="314" text-anchor="middle" class="bs">Node.js</text>
+
+    <rect x="465" y="240" width="185" height="92" rx="8" fill="#16a34a"/>
+    <text x="557" y="284" text-anchor="middle" class="bt">InfluxDB +</text>
+    <text x="557" y="304" text-anchor="middle" class="bt">PostgreSQL</text>
+
+    <rect x="675" y="240" width="185" height="92" rx="8" fill="#16a34a"/>
+    <text x="767" y="278" text-anchor="middle" class="bt">Analytics</text>
+    <text x="767" y="298" text-anchor="middle" class="bs">Z-score +</text>
+    <text x="767" y="314" text-anchor="middle" class="bs">moving avg</text>
+
+    <rect x="885" y="240" width="190" height="92" rx="8" fill="#15803d"/>
+    <text x="980" y="278" text-anchor="middle" class="bt">Alert Engine</text>
+    <text x="980" y="298" text-anchor="middle" class="bs">threshold +</text>
+    <text x="980" y="314" text-anchor="middle" class="bs">load-profile → FCM</text>
+  </g>
+  <!-- chain arrows (right edge -> next left edge) at y=286 -->
+  <line x1="230" y1="286" x2="253" y2="286" stroke="#334155" stroke-width="2.4" marker-end="url(#arrS)"/>
+  <line x1="440" y1="286" x2="463" y2="286" stroke="#334155" stroke-width="2.4" marker-end="url(#arrS)"/>
+  <line x1="650" y1="286" x2="673" y2="286" stroke="#334155" stroke-width="2.4" marker-end="url(#arrS)"/>
+  <line x1="860" y1="286" x2="883" y2="286" stroke="#334155" stroke-width="2.4" marker-end="url(#arrS)"/>
+
+  <!-- ===== LAYER 3 · INTERFACES ===== -->
+  <rect x="20" y="395" width="1080" height="205" rx="10" fill="#ffedd5"/>
+  <text x="36" y="417" class="band">LAYER 3 · INTERFACES</text>
+  <rect x="120" y="440" width="370" height="140" rx="8" fill="#ea580c"/>
+  <text x="305" y="476" text-anchor="middle" class="bt" font-size="15">Admin Web Dashboard</text>
+  <text x="305" y="498" text-anchor="middle" class="bs">React.js</text>
+  <text x="305" y="528" text-anchor="middle" class="bs">• heatmap   • trends</text>
+  <text x="305" y="548" text-anchor="middle" class="bs">• thresholds   • reports</text>
+
+  <rect x="630" y="440" width="370" height="140" rx="8" fill="#ea580c"/>
+  <text x="815" y="476" text-anchor="middle" class="bt" font-size="15">Student Mobile App</text>
+  <text x="815" y="498" text-anchor="middle" class="bs">React Native</text>
+  <text x="815" y="528" text-anchor="middle" class="bs">• own usage   • alerts</text>
+  <text x="815" y="548" text-anchor="middle" class="bs">• anonymized leaderboard</text>
+
+  <!-- ===== cross-layer arrows ===== -->
+  <!-- hardware -> broker (from room node A bottom to broker top) -->
+  <path d="M165 132 L137 240" fill="none" stroke="#16a34a" stroke-width="2.4" marker-end="url(#arrG)"/>
+  <text x="60" y="190" class="albl" fill="#16a34a">Wi-Fi / MQTT (30s)</text>
+  <!-- backend -> admin dashboard (backend bottom -> dashboard top) -->
+  <path d="M347 332 L305 440" fill="none" stroke="#2563eb" stroke-width="2.4" marker-end="url(#arrB)"/>
+  <text x="356" y="392" class="albl" fill="#2563eb">live data</text>
+  <!-- alert engine -> student app (alert bottom -> app top) -->
+  <path d="M980 332 L815 440" fill="none" stroke="#ea580c" stroke-width="2.4" marker-end="url(#arrO)"/>
+  <text x="905" y="392" class="albl" fill="#ea580c">push alert</text>
+
+  <!-- footer note -->
+  <text x="560" y="628" text-anchor="middle" class="cap" font-style="italic">
+    Privacy by design: student-facing views use anonymized averages; room-level data is access-controlled (proposal §8).</text>
+</svg>
+
+<div class="legend">
+  <span><i class="sw" style="border-color:#16a34a"></i> sensor data (Wi-Fi/MQTT)</span>
+  <span><i class="sw" style="border-color:#334155"></i> cloud pipeline</span>
+  <span><i class="sw" style="border-color:#2563eb"></i> live data to dashboard</span>
+  <span><i class="sw" style="border-color:#ea580c"></i> push alert to app</span>
+</div>
+</div>
+</body>
+</html>

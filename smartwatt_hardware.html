@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartWatt — Hardware Prototype</title>
+<style>
+  :root{--slate:#334155;--blue:#2563eb;--green:#16a34a;--orange:#ea580c;--red:#dc2626;
+        --grey:#94a3b8;--copper:#b45309;--amber:#ca8a04;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       background:#f1f5f9;color:var(--slate);padding:24px;}
+  h1{margin:0 0 4px;font-size:24px;}
+  .sub{color:#64748b;margin-bottom:16px;font-size:14px;}
+  .banner{background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;
+          padding:8px 12px;border-radius:8px;margin-bottom:20px;}
+  .grid{display:grid;grid-template-columns:1.7fr 1fr;gap:20px;}
+  .card{background:#fff;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.1);padding:18px;}
+  .card h2{margin:0 0 12px;font-size:16px;}
+  .full{grid-column:1/-1;}
+  svg{width:100%;height:auto;display:block;}
+  .blink{animation:blink 1.3s infinite;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  td,th{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;}
+  th{color:#64748b;font-weight:600;}
+  .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;}
+  /* svg text classes */
+  .ti{font:700 14px ui-sans-serif;fill:#334155;}     /* component title */
+  .ts{font:11px ui-sans-serif;fill:#64748b;}          /* small caption */
+  .pin{font:600 11px ui-sans-serif;fill:#334155;}     /* pin label */
+  .note{font:italic 11px ui-sans-serif;}
+  .wire{stroke:#334155;stroke-width:2.4;fill:none;}
+  .wG{stroke:#16a34a;} .wR{stroke:#dc2626;} .wA{stroke:#ca8a04;} .wB{stroke:#2563eb;}
+  .dash{stroke-dasharray:6 4;}
+</style>
+</head>
+<body>
+<h1>⚡ SmartWatt — Hardware Prototype</h1>
+<div class="sub">Room node (current sensing) + per-floor voltage reference. Pedagogical wiring, not a PCB netlist.</div>
+<div class="banner">⚠ Non-invasive design: the SCT-013 clamp reads current from the magnetic field around the wire — installation needs <b>no mains disconnection</b>. Relay control is optional, admin-only, and <b>not in the pilot</b>.</div>
+
+<div class="grid">
+  <!-- ============ Panel A: wiring ============ -->
+  <div class="card">
+    <h2>A · Room Node — current-sensing front-end</h2>
+    <svg viewBox="0 0 720 440">
+      <!-- Wi-Fi label (clear top zone) -->
+      <text x="600" y="40" text-anchor="middle" class="pin" fill="#2563eb">Wi-Fi / MQTT → cloud</text>
+
+      <!-- ESP32 -->
+      <rect x="400" y="150" width="190" height="210" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+      <text x="495" y="178" text-anchor="middle" class="ti">ESP32</text>
+      <text x="495" y="196" text-anchor="middle" class="ts">Wi-Fi MCU · ADC · GPIO</text>
+      <circle cx="497" cy="214" r="5" fill="#16a34a" class="blink"/>
+      <!-- left pins: dot on edge, label INSIDE box (right of dot) -->
+      <g>
+        <circle cx="400" cy="250" r="4" fill="#334155"/><text x="412" y="254" class="pin">GPIO34 · ADC</text>
+        <circle cx="400" cy="285" r="4" fill="#334155"/><text x="412" y="289" class="pin">GND (bias)</text>
+      </g>
+      <!-- relay control pin on the BOTTOM edge (where the relay wire starts) -->
+      <circle cx="430" cy="360" r="4" fill="#334155"/>
+      <text x="442" y="350" class="pin">GPIO5 · relay</text>
+      <!-- right pins: dot on edge, label INSIDE box (left of dot) -->
+      <circle cx="590" cy="250" r="4" fill="#334155"/><text x="578" y="254" text-anchor="end" class="pin">VIN 5V</text>
+      <circle cx="590" cy="300" r="4" fill="#334155"/><text x="578" y="304" text-anchor="end" class="pin">SPI → SD</text>
+
+      <!-- SCT-013 -->
+      <rect x="30" y="180" width="130" height="80" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+      <text x="95" y="210" text-anchor="middle" class="ti" font-size="13">SCT-013</text>
+      <text x="95" y="230" text-anchor="middle" class="ts">clamp CT</text>
+      <text x="95" y="247" text-anchor="middle" class="ts">(around live wire)</text>
+
+      <!-- burden resistor -->
+      <rect x="210" y="170" width="110" height="50" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.6"/>
+      <text x="265" y="190" text-anchor="middle" class="ti" font-size="12">Burden R</text>
+      <text x="265" y="208" text-anchor="middle" class="ts">22 Ω</text>
+      <!-- bias divider -->
+      <rect x="210" y="290" width="110" height="50" rx="8" fill="#fef9c3" stroke="#ca8a04" stroke-width="1.6"/>
+      <text x="265" y="310" text-anchor="middle" class="ti" font-size="12">Bias 2×10kΩ</text>
+      <text x="265" y="328" text-anchor="middle" class="ts">mid = 3V3 / 2</text>
+
+      <!-- caption in clear zone above CT -->
+      <text x="95" y="160" text-anchor="middle" class="ts" fill="#16a34a">AC current → small AC voltage</text>
+
+      <!-- wires: CT -> burden / bias -->
+      <path class="wire wG" d="M160 200 H210"/>
+      <path class="wire wG" d="M160 240 H185 V315 H210"/>
+      <!-- burden out -> GPIO34 (lane x=360, enters at y250) -->
+      <path class="wire wG" d="M320 195 H360 V250 H400"/>
+      <!-- bias out -> GND (lane x=340, enters at y285) -->
+      <path class="wire wA" d="M320 315 H340 V285 H400"/>
+
+      <!-- power 5V -->
+      <rect x="630" y="222" width="70" height="56" rx="8" fill="#ffe4e6" stroke="#dc2626" stroke-width="1.6"/>
+      <text x="665" y="246" text-anchor="middle" class="ti" font-size="12">5V</text>
+      <text x="665" y="264" text-anchor="middle" class="ts">USB / iso</text>
+      <path class="wire wR" d="M630 250 H590"/>
+      <!-- microSD -->
+      <rect x="630" y="292" width="70" height="56" rx="8" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.6"/>
+      <text x="665" y="316" text-anchor="middle" class="ti" font-size="12">microSD</text>
+      <text x="665" y="334" text-anchor="middle" class="ts">buffer</text>
+      <path class="wire" stroke="#94a3b8" d="M630 320 H590 V300"/>
+
+      <!-- optional relay (below ESP32) -->
+      <rect x="400" y="385" width="190" height="46" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="1.6"/>
+      <text x="495" y="404" text-anchor="middle" class="ti" font-size="12" fill="#dc2626">Relay (optional)</text>
+      <text x="495" y="421" text-anchor="middle" class="ts">admin-only · fail-safe ON · NOT in pilot</text>
+      <path class="wire wR dash" d="M430 360 V385"/>
+
+      <!-- wifi arrow -->
+      <path class="wire wB" d="M560 150 L600 55"/>
+      <polygon points="600,52 588,60 597,66" fill="#2563eb"/>
+    </svg>
+  </div>
+
+  <!-- ============ Panel B: voltage node ============ -->
+  <div class="card">
+    <h2>B · Per-floor Voltage Ref</h2>
+    <svg viewBox="0 0 320 440">
+      <text x="250" y="40" text-anchor="middle" class="pin" fill="#2563eb">→ MQTT</text>
+
+      <rect x="150" y="120" width="130" height="130" rx="10" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+      <text x="215" y="150" text-anchor="middle" class="ti">ESP32</text>
+      <text x="215" y="168" text-anchor="middle" class="ts">shared / phase</text>
+      <circle cx="217" cy="186" r="5" fill="#16a34a" class="blink"/>
+      <circle cx="150" cy="205" r="4" fill="#334155"/><text x="162" y="209" class="pin">GPIO35 · ADC</text>
+      <circle cx="150" cy="232" r="4" fill="#334155"/><text x="162" y="236" class="pin">GND</text>
+
+      <rect x="20" y="180" width="100" height="70" rx="10" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+      <text x="70" y="208" text-anchor="middle" class="ti" font-size="12">ZMPT101B</text>
+      <text x="70" y="227" text-anchor="middle" class="ts">AC voltage</text>
+      <path class="wire wG" d="M120 205 H150"/>
+      <path class="wire" stroke="#334155" d="M120 232 H150"/>
+
+      <path class="wire wB" d="M250 120 L262 60"/>
+      <polygon points="262,57 252,64 260,69" fill="#2563eb"/>
+
+      <text x="20" y="300" class="ts">1 per electrical phase / floor.</text>
+      <text x="20" y="320" class="ts">Broadcasts voltage to room nodes</text>
+      <text x="20" y="340" class="ts">so they compute REAL power.</text>
+      <text x="20" y="365" class="ts" fill="#16a34a">No per-room voltage sensor needed</text>
+      <text x="20" y="383" class="ts" fill="#16a34a">→ saves ~200 BDT / room.</text>
+    </svg>
+  </div>
+
+  <!-- ============ Panel C: physical layout ============ -->
+  <div class="card full">
+    <h2>C · Physical layout — mounted near the room distribution box</h2>
+    <svg viewBox="0 0 1000 300">
+      <!-- enclosure -->
+      <text x="190" y="40" text-anchor="middle" class="ti">Room Node enclosure</text>
+      <rect x="30" y="55" width="320" height="185" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="2.5"/>
+      <rect x="60" y="95" width="105" height="60" rx="6" fill="#1e3a8a"/>
+      <text x="112" y="130" text-anchor="middle" class="ti" fill="#fff" font-size="13">ESP32</text>
+      <circle cx="153" cy="105" r="4" fill="#16a34a" class="blink"/>
+      <rect x="185" y="100" width="55" height="30" rx="4" fill="#ca8a04"/>
+      <text x="212" y="148" text-anchor="middle" class="ts">burden</text>
+      <rect x="185" y="165" width="65" height="30" rx="4" fill="#64748b"/>
+      <text x="217" y="213" text-anchor="middle" class="ts">microSD</text>
+      <rect x="60" y="172" width="75" height="36" rx="4" fill="#dc2626"/>
+      <text x="97" y="195" text-anchor="middle" class="ti" fill="#fff" font-size="11">5V</text>
+      <circle cx="350" cy="140" r="7" fill="#16a34a"/>
+      <text x="300" y="100" text-anchor="middle" class="ts" fill="#16a34a">3.5mm jack</text>
+
+      <!-- mains wire -->
+      <text x="610" y="40" text-anchor="middle" class="ti" fill="#b45309" font-size="13">Mains feed to room (live conductor)</text>
+      <rect x="400" y="128" width="570" height="24" fill="#b45309"/>
+      <!-- clamp around wire -->
+      <path d="M615 95 A42 48 0 1 0 665 95" fill="none" stroke="#16a34a" stroke-width="12"/>
+      <circle cx="640" cy="140" r="13" fill="#fff" stroke="#16a34a" stroke-width="3"/>
+      <text x="640" y="215" text-anchor="middle" class="ti" fill="#16a34a" font-size="13">SCT-013 clamp</text>
+      <text x="640" y="233" text-anchor="middle" class="ts">non-invasive — no cut wiring</text>
+      <!-- clamp -> enclosure: routed BELOW the mains conductor, not through it -->
+      <path class="wire wG dash" d="M640 153 V190 H350 V146"/>
+
+      <!-- voltage node -->
+      <rect x="830" y="185" width="140" height="60" rx="8" fill="#ecfdf5" stroke="#16a34a" stroke-width="1.8"/>
+      <text x="900" y="212" text-anchor="middle" class="ti" font-size="13">Voltage Ref node</text>
+      <text x="900" y="231" text-anchor="middle" class="ts">1 per floor</text>
+    </svg>
+    <p style="font-size:12px;color:#64748b;font-style:italic;margin:8px 0 0;">
+      The clamp reads the magnetic field around the conductor; the burden resistor turns CT current into a small AC voltage,
+      and the bias divider centres it on 3V3/2 so the ESP32 ADC can sample it. Energy (kWh) is accumulated on-device.</p>
+  </div>
+
+  <!-- ============ Bill of materials ============ -->
+  <div class="card full">
+    <h2>Bill of Materials — per room node</h2>
+    <table>
+      <tr><th>Component</th><th>Role</th><th>Est. BDT</th></tr>
+      <tr><td>ESP32 dev board</td><td>MCU, Wi-Fi, ADC, MQTT</td><td>350</td></tr>
+      <tr><td>SCT-013 clamp CT</td><td>Non-invasive current sensing</td><td>250</td></tr>
+      <tr><td>Burden resistor + bias (2×10kΩ)</td><td>CT front-end for ADC</td><td>incl. in PCB</td></tr>
+      <tr><td>PCB / Veroboard + parts</td><td>Assembly</td><td>150</td></tr>
+      <tr><td>Enclosure</td><td>Mounting / safety</td><td>100</td></tr>
+      <tr><td>Wiring & misc</td><td>—</td><td>100</td></tr>
+      <tr><td colspan="2"><b>Per-room total</b></td><td><b>~950</b></td></tr>
+      <tr><td>Shared: ZMPT101B voltage node</td><td>1 per floor (~52 BDT/room amortized)</td><td>650 / floor</td></tr>
+      <tr><td><span class="pill" style="background:#fef2f2;color:#dc2626;">optional</span> 4-ch relay module</td><td>Admin cutoff — not in pilot</td><td>+~400</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

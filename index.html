@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartWatt — Prototype Hub</title>
+<style>
+  body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+       background:#0f172a;color:#e2e8f0;min-height:100vh;}
+  .wrap{max-width:980px;margin:0 auto;padding:48px 24px;}
+  .hero{text-align:center;margin-bottom:40px;}
+  .hero h1{font-size:42px;margin:0 0 8px;}
+  .hero p{color:#94a3b8;font-size:16px;margin:0;}
+  .badge{display:inline-block;background:#1e293b;color:#38bdf8;font-size:12px;
+         padding:4px 12px;border-radius:999px;margin-top:14px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:24px;
+        text-decoration:none;color:inherit;transition:transform .15s,border-color .15s;display:block;}
+  .card:hover{transform:translateY(-4px);border-color:#38bdf8;}
+  .card .ic{font-size:34px;}
+  .card h2{font-size:18px;margin:12px 0 6px;}
+  .card p{color:#94a3b8;font-size:13px;margin:0 0 14px;line-height:1.5;}
+  .go{color:#38bdf8;font-size:13px;font-weight:600;}
+  .tag{display:inline-block;font-size:10px;padding:2px 8px;border-radius:6px;margin-top:8px;}
+  .live{background:#064e3b;color:#34d399;} .static{background:#1e3a5f;color:#7dd3fc;}
+  .note{margin-top:36px;background:#1e293b;border:1px solid #334155;border-radius:12px;
+        padding:16px 20px;font-size:13px;color:#94a3b8;}
+  footer{text-align:center;color:#64748b;font-size:12px;margin-top:32px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <h1>⚡ SmartWatt</h1>
+    <p>IoT-Based Room-Wise Energy Monitoring & Management System</p>
+    <div class="badge">Prototype Hub · Innovation Challenge 2026</div>
+  </div>
+
+  <div class="grid">
+    <a class="card" href="smartwatt_prototype.html">
+      <div class="ic">📊</div>
+      <h2>Interactive Demo</h2>
+      <p>Live admin dashboard + student app with simulated real-time data, heatmap, alerts, and a "simulate heater" trigger.</p>
+      <span class="go">Open demo →</span><br><span class="tag live">● LIVE (simulated)</span>
+    </a>
+
+    <a class="card" href="smartwatt_architecture.html">
+      <div class="ic">🗺️</div>
+      <h2>System Architecture</h2>
+      <p>End-to-end data flow across the three layers: hardware → cloud → interfaces.</p>
+      <span class="go">View diagram →</span><br><span class="tag static">diagram</span>
+    </a>
+
+    <a class="card" href="smartwatt_hardware.html">
+      <div class="ic">🔌</div>
+      <h2>Hardware Prototype</h2>
+      <p>ESP32 room-node wiring, the per-floor voltage reference, physical layout, and bill of materials.</p>
+      <span class="go">View hardware →</span><br><span class="tag static">diagram</span>
+    </a>
+  </div>
+
+  <div class="note">
+    <b>⚠ Note:</b> All dashboard data is <b>simulated</b> for demonstration — it illustrates the software, not measured
+    energy savings or sensor accuracy. The 10–20% savings figure is a <b>pilot target to be validated</b>, not a result.
+  </div>
+
+  <footer>Team SmartWatt · Daffodil International University</footer>
+</div>
+</body>
+</html>
